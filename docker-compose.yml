@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=polls
+      - POSTGRES_DB=polls
+      - POSTGRES_PASSWORD=pollssecret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    hostname: polls-postgres
+    ports:
+      - "5432:5432"
+
+  python:
+    build:
+      context: ./polls_app
+      dockerfile: Dockerfile
+    image: polls_python
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - app:/polls_app
+    hostname: polls-app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    links:
+      - postgres:polls-postgres
+    command: python manage.py runserver 0:8000
+
+
+volumes:
+  
+  app:
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/polls_app
+      
+  pgdata:
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/polls_pgdata

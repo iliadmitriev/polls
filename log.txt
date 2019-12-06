@@ -1,0 +1,49 @@
+mkdir polls
+
+cd polls/
+
+mkdir polls_pgdata
+
+mkdir polls_app
+
+docker volume create -o type=none -o o=bind -o device=${PWD}/polls_pgdata polls_pgdata
+
+docker volume create -o type=none -o o=bind -o device=${PWD}/polls_app polls_app
+
+docker run -d -p 5432:5432 -v polls_pgdata:/var/lib/postgresql/data \
+       -e POSTGRES_USER=polls -e POSTGRES_PASSWORD=pollssecret \
+       -e POSTGRES_DB=polls --name polls_postgres --hostname polls-postgres postgres
+
+docker logs -f polls_postgres
+
+docker run -ti -p 8000:8000 -v polls_app:/polls_app -e PYTHONUNBUFFERED=1 \
+       --name polls_python --hostname polls-python \
+       --link polls_postgres python bash
+
+
+pip3 install Django psycopg2
+
+django-admin startproject polls_app /polls_app
+
+cd django_app
+
+
+polls_app/settings.py
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'polls',
+        'USER': 'polls',
+        'PASSWORD': 'pollssecret',
+        'HOST': 'polls-postgres',
+        'PORT': '5432',
+    }
+}
+
+python3 manage.py migrate
+
+python3 manage.py createsuperuser
+
+sed -i "s/ALLOWED_HOSTS\ =\ \[\]/ALLOWED_HOSTS = ['*']/" django_app/settings.py
+
+python3 manage.py runserver 0:8000
